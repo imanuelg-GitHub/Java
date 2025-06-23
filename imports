@@ -1,0 +1,123 @@
+
+✅ Full Working Java Program
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.rds.RdsUtilities;
+
+public class RdsIamPostgresExample {
+
+    public static void main(String[] args) throws Exception {
+        // --- Configuration ---
+        String host = "your-db-host.rds.amazonaws.com";
+        int port = 5432;
+        String dbName = "yourdbname";
+        String username = "youruser";
+        String awsProfile = "default";
+        Region region = Region.EU_WEST_2;
+
+        // --- Generate IAM token ---
+        ProfileCredentialsProvider credentialsProvider = ProfileCredentialsProvider.builder()
+                .profileName(awsProfile)
+                .build();
+
+        RdsUtilities utilities = RdsUtilities.builder()
+                .credentialsProvider(credentialsProvider)
+                .region(region)
+                .build();
+
+        String authToken = utilities.generateAuthenticationToken(builder -> builder
+                .hostname(host)
+                .port(port)
+                .username(username));
+
+        System.out.println("Generated Auth Token:\n" + authToken);
+
+        // --- JDBC URL ---
+        String jdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, dbName);
+
+        // --- Connect with PostgreSQL driver using the auth token ---
+        Class.forName("org.postgresql.Driver"); // Make sure PostgreSQL JDBC driver is in your classpath
+        Connection conn = DriverManager.getConnection(
+                jdbcUrl,
+                username,
+                authToken
+        );
+
+        // --- Run query ---
+        PreparedStatement stmt = conn.prepareStatement("SELECT NOW();");
+        ResultSet rs = stmt.executeQuery();
+        while (rs.next()) {
+            System.out.println("DB Time: " + rs.getString(1));
+        }
+
+        // --- Clean up ---
+        rs.close();
+        stmt.close();
+        conn.close();
+    }
+}
+
+
+---
+
+✅ Add These to pom.xml
+
+AWS SDK for Java v2 dependencies:
+
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>bom</artifactId>
+            <version>2.25.20</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+
+<dependencies>
+    <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>rds</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>auth</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>regions</artifactId>
+    </dependency>
+</dependencies>
+
+PostgreSQL JDBC driver:
+
+<dependency>
+    <groupId>org.postgresql</groupId>
+    <artifactId>postgresql</artifactId>
+    <version>42.7.3</version> <!-- latest as of 2025 -->
+</dependency>
+
+
+---
+
+✅ Notes
+
+You must allow IAM authentication for the DB user in your RDS PostgreSQL instance
+
+Your AWS profile (e.g., ~/.aws/credentials) should contain valid credentials with RDS auth permission
+
+The DB security group must allow inbound traffic from your IP
+
+Class.forName("org.postgresql.Driver") is optional in modern Java versions but still safe to include
+
+On Mon, 23 Jun 2025, 20:41 Imanuel Greenfeld, <imanuel.greenfeld1@gmail.com> wrote:
+https://chatgpt.com/share/6859adca-4118-8006-9d1b-c142e2ea1cfa 
+
