@@ -1,0 +1,19 @@
+    public static String getAuthToken(RdsClient rdsClient, String dbInstanceIdentifier, String masterUsername) {
+
+        RdsUtilities utilities = rdsClient.utilities();
+        try {
+            GenerateAuthenticationTokenRequest tokenRequest = GenerateAuthenticationTokenRequest.builder()
+                    .credentialsProvider(ProfileCredentialsProvider.create())
+                    .username(masterUsername)
+                    .port(3306)
+                    .hostname(dbInstanceIdentifier)
+                    .build();
+
+            return utilities.generateAuthenticationToken(tokenRequest);
+
+        } catch (RdsException e) {
+            System.out.println(e.getLocalizedMessage());
+            System.exit(1);
+        }
+        return "";
+    }
