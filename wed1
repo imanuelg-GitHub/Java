@@ -1,0 +1,62 @@
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.rds.RdsClient;
+import software.amazon.awssdk.services.rds.RdsUtilities;
+import software.amazon.awssdk.services.rds.model.GenerateAuthenticationTokenRequest;
+import software.amazon.awssdk.services.rds.model.RdsException;
+
+public class GenerateRDSAuthToken {
+    public static void main(String[] args) {
+        final String usage = """
+                Usage:
+                    <hostname> <username> <region> [<aws_profile>]
+
+                Where:
+                    hostname    - RDS instance endpoint (e.g. mydb.abc123xyz.eu-west-2.rds.amazonaws.com)
+                    username    - IAM DB user
+                    region      - AWS region (e.g. eu-west-2)
+                    aws_profile - (Optional) AWS CLI profile name
+                """;
+
+        if (args.length < 3 || args.length > 4) {
+            System.out.println(usage);
+            System.exit(1);
+        }
+
+        String hostname = args[0];
+        String username = args[1];
+        String regionStr = args[2];
+        String profile = args.length == 4 ? args[3] : "default";
+
+        Region region = Region.of(regionStr);
+
+        try {
+            ProfileCredentialsProvider credentialsProvider = ProfileCredentialsProvider.builder()
+                    .profileName(profile)
+                    .build();
+
+            RdsClient rdsClient = RdsClient.builder()
+                    .region(region)
+                    .credentialsProvider(credentialsProvider)
+                    .build();
+
+            RdsUtilities rdsUtilities = rdsClient.utilities();
+
+            String authToken = rdsUtilities.generateAuthenticationToken(
+                    GenerateAuthenticationTokenRequest.builder()
+                            .credentialsProvider(credentialsProvider)
+                            .hostname(hostname)
+                            .port(5432) // Use 3306 for MySQL
+                            .username(username)
+                            .region(region)
+                            .build()
+            );
+
+            System.out.println("Generated RDS IAM Auth Token:\n" + authToken);
+
+        } catch (RdsException e) {
+            System.err.println("Error generating token: " + e.awsErrorDetails().errorMessage());
+            System.exit(1);
+        }
+    }
+}
